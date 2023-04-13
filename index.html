@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+   <head>
+      <title>Bus Tracker</title>
+      <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+      <meta charset="utf-8">
+      <style>
+         #map {
+         height: 100%;
+         }
+      </style>
+   </head>
+   <body>
+      <div id="map"></div>
+      <script>
+         // Define the bus route waypoints
+         var waypoints = [
+         {location: "Kundapura, Karnataka"},
+         {location: "Maravanthe Beach, Karnataka"},
+         {location: "Hangyo Saiba, Karnataka"},
+         {location: "Malpe Beach, Karnataka"},
+         {location: "Udupi, Karnataka"}
+         ];
+         
+         
+         // Initialize the Google Map
+         var map = new google.maps.Map(document.getElementById('map'), {
+           zoom: 10,
+           center: waypoints[0].location
+         });
+         
+         // Initialize the DirectionsService and DirectionsRenderer
+         var directionsService = new google.maps.DirectionsService();
+         var directionsRenderer = new google.maps.DirectionsRenderer({
+           map: map,
+           polylineOptions: {
+             strokeColor: '#3366FF',
+             strokeOpacity: 0.7,
+             strokeWeight: 5
+           }
+         });
+         
+         // Initialize the cumulative route
+         var route = [];
+         
+         // Loop through the waypoints to calculate the route between each pair
+         for (var i = 0; i < waypoints.length - 1; i++) {
+           var origin = waypoints[i].location;
+           var destination = waypoints[i+1].location;
+         
+           var request = {
+             origin: origin,
+             destination: destination,
+             travelMode: 'DRIVING'
+           };
+         
+           directionsService.route(request, function(result, status) {
+             if (status == 'OK') {
+               // Add the route to the cumulative route
+               route = route.concat(result.routes[0].overview_path);
+         
+               // Render the cumulative route
+               directionsRenderer.setDirections({routes: [{overview_path: route}]});
+             }
+           });
+         }
+         
+         // Initialize the bus marker
+         var busMarker = new google.maps.Marker({
+           position: waypoints[0].location,
+           map: map,
+           icon: 'https://maps.google.com/mapfiles/kml/paddle/grn-circle.png'
+         });
+         
+         // Set up a timer to update the bus marker every 5 seconds
+         setInterval(function() {
+           var currentLocation = busMarker.getPosition();
+           var currentWaypointIndex = findClosestWaypointIndex(currentLocation, waypoints);
+         
+           // Check if the bus has reached the last waypoint
+           if (currentWaypointIndex == waypoints.length - 1) {
+             alert('Bus has reached the end of the route');
+             return;
+           }
+         
+           var nextWaypoint = waypoints[currentWaypointIndex + 1].location;
+           var distanceToNextWaypoint = google.maps.geometry.spherical.computeDistanceBetween(currentLocation, nextWaypoint);
+         
+           // If the bus is within 20 meters of the next waypoint, update the marker to the next waypoint
+           if (distanceToNextWaypoint < 20) {
+             busMarker.setPosition(nextWaypoint);
+           }
+           else {
+         //    Update the marker position to the midpoint between the current location and the next waypoint
+             var heading = google.maps.geometry.spherical.computeHeading(currentLocation, nextWaypoint);
+             var midpoint = google.maps.geometry.spherical.computeOffset(currentLocation, distanceToNextWaypoint / 2, heading);
+             busMarker.setPosition(midpoint);
+           }
+         }, 5000);
+         
+         // Helper function to find the index of the closest waypoint to a given location
+         function findClosestWaypointIndex(location, waypoints) {
+           var closestIndex = 0;
+           var closestDistance = Infinity;
+           for (var i = 0; i < waypoints.length; i++) {
+             var distance = google.maps.geometry.spherical.computeDistanceBetween(location, waypoints[i].location);
+             if (distance < closestDistance) {
+               closestIndex = i;
+               closestDistance = distance;
+             }
+           }
+           return closestIndex;
+         }
+      </script>
+      <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=geometry"></script>
+   </body>
+</html>
